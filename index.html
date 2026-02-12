@@ -3,128 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Pas Foto 3x4 - MTD26</title>
+    <title>Cetak Foto 3x4 Smart Offset - MTD26</title>
     <style>
         :root {
-            /* Ukuran Pas Foto 3x4 */
+            /* KONFIGURASI UKURAN */
             --photo-w: 30mm;
             --photo-h: 40mm;
-            --margin-page: 3mm; /* Margin Kertas 0.3 cm */
-            --cut-line-color: #bbb; /* Warna garis potong abu halus */
+            --page-margin: 3mm;
+            --cut-color: #999; 
         }
 
         body {
-            background: #444;
-            font-family: 'Segoe UI', sans-serif;
+            background: #333; font-family: 'Segoe UI', sans-serif;
             margin: 0; padding: 20px;
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* PANEL KONTROL */
+        /* --- PANEL KONTROL --- */
         .no-print {
             background: white; padding: 15px 25px; border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             position: sticky; top: 10px; z-index: 999;
-            display: flex; gap: 15px; flex-wrap: wrap; align-items: center;
-            border-bottom: 4px solid #00acc1;
+            display: flex; gap: 15px; flex-wrap: wrap; align-items: center; justify-content: center;
+            border-bottom: 4px solid #00acc1; margin-bottom: 20px;
         }
+        .ctrl-group { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: bold; color: #555; }
+        input { padding: 5px; border: 1px solid #ccc; border-radius: 4px; text-align: center; }
         button {
             padding: 8px 15px; background: #00acc1; color: white; border: none; 
             border-radius: 4px; cursor: pointer; font-weight: bold;
         }
         button:hover { background: #00838f; }
         .btn-print { background: #1a237e; }
-        
-        #statusMsg { font-size: 13px; font-weight: bold; color: #d35400; margin-left: 10px;}
+        #statusMsg { font-size: 12px; font-weight: bold; color: #d35400; margin-left: 5px; }
 
-        /* SETTING KERTAS A4 */
+        /* --- HALAMAN A4 --- */
         @page {
             size: A4 portrait;
-            margin: var(--margin-page); 
+            margin: var(--page-margin);
         }
 
         .sheet {
             background: white;
-            width: 210mm; height: 297mm; /* A4 */
-            padding: var(--margin-page);
+            width: 210mm; height: 297mm;
+            padding: var(--page-margin);
             box-sizing: border-box;
             margin-bottom: 20px;
-            display: flex; align-content: flex-start; flex-wrap: wrap;
+            display: flex; flex-wrap: wrap; align-content: flex-start;
             page-break-after: always;
+            /* Debugging Shadow di layar */
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* ITEM FOTO */
-        .photo-item {
+        /* --- SLOT GRID (KOTAK 3x4) --- */
+        .slot {
             width: var(--photo-w);
             height: var(--photo-h);
-            position: relative;
             box-sizing: border-box;
-            
-            /* GARIS POTONG HEMAT (Dashed) */
-            /* Garis kanan dan bawah ada di setiap foto */
-            border-right: 1px dashed var(--cut-line-color);
-            border-bottom: 1px dashed var(--cut-line-color);
-            
+            position: relative;
             display: flex; justify-content: center; align-items: center;
-            overflow: hidden;
+            font-size: 10px; color: #eee; /* Warna nomor grid samar */
+            user-select: none;
         }
 
-        /* Trik menutup border luar agar rapi */
-        .sheet {
-            border-top: 1px dashed var(--cut-line-color);
-            border-left: 1px dashed var(--cut-line-color);
+        /* --- FOTO AKTIF --- */
+        .slot.has-photo {
+            /* Garis Potong Pintar: 
+               Menggunakan box-shadow inset 0.5px. 
+               Jika dua foto bersebelahan, 0.5px + 0.5px = 1px garis solid.
+               Tidak menggunakan border agar ukuran box tidak berantakan.
+            */
+            box-shadow: 0 0 0 0.5px var(--cut-color);
+            color: transparent; /* Sembunyikan nomor grid */
         }
 
         .photo-img {
-            /* PADDING DALAM 1mm (Jarak Aman Potong) */
-            /* Foto asli mengecil 2mm total (1mm kiri, 1mm kanan) */
-            /* Saat dipotong pas garis, foto tidak terpotong wajahnya */
-            width: calc(100% - 2mm); 
+            /* Area Aman (Padding Putih 1mm) */
+            /* Foto asli 28x38mm, visual jarak antar foto 2mm */
+            width: calc(100% - 2mm);
             height: calc(100% - 2mm);
             object-fit: cover;
-            background: #eee; /* Placeholder warna abu */
-        }
-        
-        .no-photo {
-            font-size: 9px; color: #999; text-align: center; line-height: 1.2;
-            width: 100%; padding: 2px;
+            /* Opsional: Border halus di sekeliling foto */
+            /* outline: 1px solid #eee; */
         }
 
-        /* Overlay Nama (Opsional - Hilang saat print jika mau) */
-        .photo-label {
-            position: absolute; bottom: 3mm; left: 0; width: 100%;
+        /* Label Nama Kecil (Hilang saat print) */
+        .name-label {
+            position: absolute; bottom: 2mm; width: 100%;
             text-align: center; font-size: 7px; color: #000;
-            background: rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.8);
             white-space: nowrap; overflow: hidden;
         }
 
+        /* PRINT MODE */
         @media print {
             body { background: none; padding: 0; }
             .no-print { display: none !important; }
             .sheet { margin: 0; box-shadow: none; }
-            /* Opsional: Sembunyikan label nama saat cetak agar foto bersih */
-            .photo-label { display: none; } 
+            /* Nomor grid di kotak kosong tidak boleh tercetak */
+            .slot:not(.has-photo) { color: transparent !important; }
+            /* Label nama disembunyikan agar bersih */
+            .name-label { display: none; }
         }
     </style>
 </head>
 <body>
 
     <div class="no-print">
-        <div style="font-weight:bold; color:#555;">CETAK FOTO 3x4</div>
-        <button onclick="fetchData()">🔄 AMBIL DATA</button>
+        <div class="ctrl-group">
+            <button onclick="fetchData()">🔄 LOAD DATA</button>
+            <span id="statusMsg">...</span>
+        </div>
         
-        <div style="border-left:1px solid #ccc; height:20px"></div>
+        <div style="border-left:1px solid #ccc; height:25px"></div>
         
-        <label style="font-size:12px">Mulai Baris:</label>
-        <input type="number" id="startRow" value="1" style="width:40px; text-align:center;">
-        <label style="font-size:12px">Jml Foto:</label>
-        <input type="number" id="countRow" value="42" style="width:40px; text-align:center;">
+        <div class="ctrl-group">
+            <label>Mulai di Kotak No:</label>
+            <input type="number" id="offsetPos" value="1" min="1" max="42" style="width:50px" title="Gunakan ini jika kertas bagian atas sudah terpakai">
+        </div>
         
+        <div class="ctrl-group">
+            <label>Jml Foto:</label>
+            <input type="number" id="printCount" value="42" style="width:50px">
+        </div>
+
         <button onclick="renderPhotos()">TERAPKAN</button>
         <button class="btn-print" onclick="window.print()">🖨️ CETAK</button>
-        
-        <span id="statusMsg">Klik 'Ambil Data' dulu.</span>
     </div>
 
     <div id="outputArea"></div>
@@ -139,61 +143,50 @@
 
     function fetchData() {
         const msg = document.getElementById('statusMsg');
-        msg.innerText = "⏳ Menghubungi Sheet...";
+        msg.innerText = "⏳..";
         
         fetch(DATA_URL)
             .then(res => res.text())
             .then(text => {
-                // Parsing GVIZ Response
                 const jsonText = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/)[1];
                 const json = JSON.parse(jsonText);
                 parseData(json);
-                msg.innerText = `✅ ${globalData.length} Data Termuat.`;
-                msg.style.color = "green";
+                msg.innerText = `✅ ${globalData.length}`;
                 renderPhotos();
             })
             .catch(e => {
                 console.error(e);
-                msg.innerText = "❌ Gagal. Cek Console.";
-                msg.style.color = "red";
+                msg.innerText = "❌ Err";
             });
     }
 
     function parseData(json) {
         const rows = json.table.rows;
-        
-        // --- LOGIKA MENCARI KOLOM ---
-        // Kita tahu kolom link foto ada di posisi terakhir (Index 34 atau Kolom AI)
-        // Berdasarkan script Code.gs Anda: var rowData = [reg, ..., linkFoto];
-        const LINK_INDEX = 34; 
-        // Index Nama biasanya di kolom C (Index 2)
-        const NAMA_INDEX = 2;
+        // Index Kolom: Nama (2), Link Foto (34 / AI)
+        const IDX_NAMA = 2;
+        const IDX_FOTO = 34;
 
         globalData = rows.map(r => {
             const c = r.c;
             if(!c) return null;
             
-            // Ambil Nama
-            let nama = c[NAMA_INDEX] ? (c[NAMA_INDEX].v || "") : "Tanpa Nama";
+            let nama = c[IDX_NAMA] ? (c[IDX_NAMA].v || "Tanpa Nama") : "Tanpa Nama";
             
-            // Ambil Link Foto (Paksa Index 34)
-            let rawLink = "";
-            if(c[LINK_INDEX]) {
-                rawLink = c[LINK_INDEX].v || "";
-            } else {
-                // Fallback: Coba cari di kolom manapun yang berisi 'http'
-                // Ini jaga-jaga kalau struktur geser
+            // Logika Pencarian Link Foto (Smart Fallback)
+            let link = "";
+            if(c[IDX_FOTO]) link = c[IDX_FOTO].v || "";
+            // Jika kolom 34 kosong, cari kolom lain yg mengandung 'http'
+            if(!link || link.length < 5) {
                 for(let i=0; i<c.length; i++) {
                     let val = c[i] ? String(c[i].v) : "";
-                    if(val.includes("http") && val.includes("google")) {
-                        rawLink = val;
-                        break;
+                    if(val.includes("drive.google.com") || val.includes("data:image")) {
+                        link = val; break;
                     }
                 }
             }
 
-            return { nama: nama, foto: rawLink };
-        }).filter(d => d); // Hapus null
+            return { nama: nama, foto: link };
+        }).filter(d => d);
     }
 
     function renderPhotos() {
@@ -202,75 +195,75 @@
 
         if(globalData.length === 0) return;
 
-        // Filter Slicing Data
-        const start = Math.max(0, parseInt(document.getElementById('startRow').value) - 1);
-        const count = parseInt(document.getElementById('countRow').value);
-        const dataSlice = globalData.slice(start, start + count);
+        // Parameter Kontrol
+        const offset = Math.max(1, parseInt(document.getElementById('offsetPos').value)); // 1-based
+        const count = parseInt(document.getElementById('printCount').value);
+        
+        // Data yang mau dicetak
+        const dataQueue = globalData.slice(0, count); // Ambil sejumlah count dari data awal (atau bisa ditambah logika interval data)
 
-        // Hitung Layout A4
-        // Area Cetak = 210 - (3+3) = 204mm Lebar
-        // Lebar Foto = 30mm. Kapasitas Samping = 204 / 30 = 6.8 -> 6 Kolom
-        // Area Cetak Tinggi = 297 - (3+3) = 291mm
-        // Tinggi Foto = 40mm. Kapasitas Bawah = 291 / 40 = 7.2 -> 7 Baris
-        // Total per lembar = 6 * 7 = 42 Foto
-        const perPage = 42; 
-        const totalSheets = Math.ceil(dataSlice.length / perPage);
+        // Hitung Layout
+        // A4 Margin 3mm -> Lebar area 204mm, Tinggi 291mm
+        // Grid: 30mm x 40mm. 
+        // Kapasitas: 6 Kolom x 7 Baris = 42 Slot
+        const SLOTS_PER_PAGE = 42;
+        
+        // Total Slot yang dibutuhkan = Offset (kosong) + Data
+        const totalSlotsNeeded = (offset - 1) + dataQueue.length;
+        const totalSheets = Math.ceil(totalSlotsNeeded / SLOTS_PER_PAGE);
 
-        for(let s=0; s<totalSheets; s++) {
+        let dataIndex = 0;
+
+        for(let s = 0; s < totalSheets; s++) {
             const sheet = document.createElement('div');
             sheet.className = 'sheet';
 
-            const pageData = dataSlice.slice(s*perPage, (s+1)*perPage);
-
-            pageData.forEach(item => {
-                let src = item.foto;
-                let showImg = false;
-
-                // Konversi Link Drive ke Thumbnail agar bisa muncul di IMG tag
-                if(src && src.includes('drive.google.com')) {
-                    // Cari ID file (string panjang di antara slash)
-                    const match = src.match(/[-\w]{25,}/);
-                    if(match) {
-                        src = "https://drive.google.com/thumbnail?id=" + match[0] + "&sz=w500";
-                        showImg = true;
-                    }
-                } else if (src && src.startsWith("data:image")) {
-                    showImg = true; // Support Base64
-                }
-
+            // Render 42 Slot per halaman
+            for(let i = 1; i <= SLOTS_PER_PAGE; i++) {
+                const globalSlotIndex = (s * SLOTS_PER_PAGE) + i;
                 const div = document.createElement('div');
-                div.className = 'photo-item';
+                div.className = 'slot';
                 
-                if(showImg) {
-                    div.innerHTML = `
-                        <img src="${src}" class="photo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
-                        <div class="no-photo" style="display:none">${item.nama}<br>(Error Load)</div>
-                        <div class="photo-label">${item.nama.substring(0,12)}</div>
-                    `;
-                } else {
-                    // Jika link kosong atau teks "Foto Tidak Diubah"
-                    div.innerHTML = `<div class="no-photo">${item.nama.substring(0,15)}<br>(No Link)</div>`;
+                // LOGIKA ISI SLOT
+                // 1. Apakah ini slot kosong (sebelum posisi mulai)?
+                if (globalSlotIndex < offset) {
+                    div.innerText = globalSlotIndex; // Tampilkan nomor grid (layar saja)
+                } 
+                // 2. Apakah masih ada data untuk dicetak?
+                else if (dataIndex < dataQueue.length) {
+                    const item = dataQueue[dataIndex];
+                    div.classList.add('has-photo'); // Aktifkan garis potong
+                    
+                    let src = item.foto;
+                    // Fix Thumbnail
+                    if(src && src.includes('drive.google.com')) {
+                        const m = src.match(/[-\w]{25,}/);
+                        if(m) src = "https://drive.google.com/thumbnail?id=" + m[0] + "&sz=w500";
+                    }
+
+                    if(src && src.length > 10) {
+                        div.innerHTML = `
+                            <img src="${src}" class="photo-img" onerror="this.style.display='none'; this.parentElement.innerText='ERR'">
+                            <div class="name-label">${item.nama.substring(0,10)}</div>
+                        `;
+                    } else {
+                        div.innerHTML = `<div style="font-size:9px; color:black; text-align:center;">${item.nama.substring(0,10)}<br>(No Foto)</div>`;
+                    }
+                    
+                    dataIndex++;
+                } 
+                // 3. Slot sisa setelah data habis
+                else {
+                    div.innerText = globalSlotIndex; // Tampilkan nomor grid
                 }
+
                 sheet.appendChild(div);
-            });
-
-            // Isi sisa grid dengan kotak kosong agar border tetap rapi (Opsional)
-            // Agar garis potong tetap terbentuk sempurna sampai akhir baris
-            const sisa = perPage - pageData.length;
-            if(sisa > 0 && sisa < perPage) {
-                for(let i=0; i<sisa; i++) {
-                    const dummy = document.createElement('div');
-                    dummy.className = 'photo-item';
-                    dummy.innerHTML = '<span style="color:#eee; font-size:8px;">.</span>';
-                    sheet.appendChild(dummy);
-                }
             }
-
             container.appendChild(sheet);
         }
     }
     
-    // Auto start
+    // Init
     window.onload = fetchData;
 </script>
 
