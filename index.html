@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cetak Pas Foto 3x4 - MTD26</title>
+    <style>
+        :root {
+            --photo-w: 30mm;
+            --photo-h: 40mm;
+            --margin-page: 3mm;
+            --cut-line-color: #999;
+        }
+
+        body {
+            background: #444;
+            font-family: sans-serif;
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* PANEL KONTROL (LAYAR) */
+        .no-print {
+            background: white; padding: 15px; border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            position: sticky; top: 10px; z-index: 999;
+            display: flex; gap: 15px; flex-wrap: wrap; align-items: center;
+            margin-bottom: 20px; border-bottom: 4px solid #00acc1;
+        }
+        button {
+            padding: 8px 15px; background: #00acc1; color: white; border: none; 
+            border-radius: 4px; cursor: pointer; font-weight: bold;
+        }
+        button:hover { background: #00838f; }
+        .btn-print { background: #1a237e; }
+        
+        #statusMsg { font-size: 13px; font-weight: bold; color: #d35400; }
+
+        /* SETTING KERTAS A4 */
+        @page {
+            size: A4 portrait;
+            margin: var(--margin-page); /* 0.3cm sesuai request */
+        }
+
+        .sheet {
+            background: white;
+            width: 210mm; height: 297mm; /* A4 */
+            padding: var(--margin-page);
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            display: flex; align-content: flex-start; flex-wrap: wrap;
+            page-break-after: always;
+            position: relative;
+        }
+
+        /* CONTAINER FOTO (GRID RAPAT) */
+        /* Kita pakai teknik negatif margin agar border menyatu (sekali potong) */
+        .photo-item {
+            width: var(--photo-w);
+            height: var(--photo-h);
+            position: relative;
+            box-sizing: border-box;
+            
+            /* Garis Bantu Potong (Dashed Tipis) */
+            border-right: 1px dashed var(--cut-line-color);
+            border-bottom: 1px dashed var(--cut-line-color);
+            
+            /* Agar border kiri dan atas ada di elemen pertama */
+            margin-right: 0; 
+            margin-bottom: 0;
+            
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+        }
+
+        /* Trik agar garis potong sisi Kiri dan Atas sheet tertutup/muncul rapi */
+        .sheet {
+            border-top: 1px dashed var(--cut-line-color);
+            border-left: 1px dashed var(--cut-line-color);
+        }
+
+        .photo-img {
+            /* Area Aman Foto (2mm request) */
+            /* Kita buat padding putih 1mm di dalam, jadi antar foto jarak visual 2mm tapi garis di tengah */
+            width: calc(100% - 2mm); 
+            height: calc(100% - 2mm);
+            object-fit: cover;
+            /* Opsional: Border tipis di fotonya sendiri */
+            /* border: 1px solid #eee; */
+        }
+        
+        .no-photo {
+            font-size: 10px; color: #ccc; text-align: center;
+        }
+
+        /* INFO NAMA KECIL DI BAWAH FOTO (OPSIONAL - BISA DIHAPUS) */
+        .photo-label {
+            position: absolute; bottom: 2px; left: 0; width: 100%;
+            text-align: center; font-size: 7px; color: #555;
+            background: rgba(255,255,255,0.8);
+            white-space: nowrap; overflow: hidden;
+        }
+
+        @media print {
+            body { background: none; padding: 0; }
+            .no-print { display: none !important; }
+            .sheet { margin: 0; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <div style="font-weight:bold; color:#555;">CETAK FOTO 3x4 (A4)</div>
+        <button onclick="fetchData()">🔄 AMBIL DATA</button>
+        
+        <div style="border-left:1px solid #ccc; height:20px"></div>
+        
+        <label style="font-size:12px">Mulai:</label>
+        <input type="number" id="startRow" value="1" style="width:50px">
+        <label style="font-size:12px">Jml:</label>
+        <input type="number" id="countRow" value="30" style="width:50px">
+        
+        <button onclick="renderPhotos()">TERAPKAN</button>
+        <button class="btn-print" onclick="window.print()">🖨️ CETAK</button>
+        
+        <span id="statusMsg"></span>
+    </div>
+
+    <div id="outputArea"></div>
+
+<script>
+    // --- KONFIGURASI DATA (Sama seperti idcard.html) ---
+    const SHEET_ID = '1qckWYXGTqhKMM-WRpzoBwURwXUUrpXo0aBJ_MVi9tQg'; 
+    const SHEET_NAME = 'Daftar'; 
+    const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+    let globalData = [];
+
+    function fetchData() {
+        const msg = document.getElementById('statusMsg');
+        msg.innerText = "⏳ Loading...";
+        
+        fetch(DATA_URL)
+            .then(res => res.text())
+            .then(text => {
+                const jsonText = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/)[1];
+                const json = JSON.parse(jsonText);
+                parseData(json);
+                msg.innerText = `✅ ${globalData.length} Foto Siap.`;
+                renderPhotos();
+            })
+            .catch(e => {
+                console.error(e);
+                msg.innerText = "❌ Gagal Ambil Data.";
+            });
+    }
+
+    function parseData(json) {
+        const cols = json.table.cols.map(c => c ? c.label.toLowerCase() : "");
+        const rows = json.table.rows;
+
+        // Cari index kolom
+        const idxNama = cols.findIndex(c => c.includes('nama'));
+        // Cari kolom foto (prioritas nama 'foto', fallback ke index terakhir)
+        let idxFoto = cols.findIndex(c => c.includes('foto') || c.includes('link'));
+        if(idxFoto === -1) idxFoto = 34; // Fallback MTD26
+
+        globalData = rows.map(r => {
+            const c = r.c;
+            if(!c) return null;
+            return {
+                nama: c[idxNama] ? (c[idxNama].v || "") : "",
+                foto: c[idxFoto] ? (c[idxFoto].v || "") : ""
+            };
+        }).filter(d => d && d.nama); // Hapus baris kosong
+    }
+
+    function renderPhotos() {
+        const container = document.getElementById('outputArea');
+        container.innerHTML = "";
+
+        if(globalData.length === 0) return;
+
+        // Filter Interval
+        const start = parseInt(document.getElementById('startRow').value) - 1;
+        const count = parseInt(document.getElementById('countRow').value);
+        const dataSlice = globalData.slice(start, start + count);
+
+        // Hitung Kapasitas A4
+        // A4 Lebar = 210mm - (3mm x 2) = 204mm
+        // Foto Lebar = 30mm. Muat = floor(204/30) = 6 Kolom
+        // A4 Tinggi = 297mm - (3mm x 2) = 291mm
+        // Foto Tinggi = 40mm. Muat = floor(291/40) = 7 Baris
+        // Total per lembar = 42 Foto
+        const perPage = 42; 
+        const totalSheets = Math.ceil(dataSlice.length / perPage);
+
+        for(let s=0; s<totalSheets; s++) {
+            const sheet = document.createElement('div');
+            sheet.className = 'sheet';
+
+            const pageData = dataSlice.slice(s*perPage, (s+1)*perPage);
+
+            pageData.forEach(item => {
+                let src = item.foto;
+                // Fix Google Drive Link
+                if(src && src.includes('drive.google.com')) {
+                    const match = src.match(/[-\w]{25,}/);
+                    if(match) src = "https://drive.google.com/thumbnail?id=" + match[0] + "&sz=w500";
+                }
+
+                const div = document.createElement('div');
+                div.className = 'photo-item';
+                
+                if(src && src.length > 5) {
+                    div.innerHTML = `
+                        <img src="${src}" class="photo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                        <div class="no-photo" style="display:none">NO IMG</div>
+                        `;
+                } else {
+                    div.innerHTML = `<div class="no-photo">${item.nama.substr(0,15)}<br>(No Foto)</div>`;
+                }
+                sheet.appendChild(div);
+            });
+
+            container.appendChild(sheet);
+        }
+    }
+    
+    // Auto load
+    window.onload = fetchData;
+</script>
+
+</body>
+</html>
