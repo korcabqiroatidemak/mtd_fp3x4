@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Foto 3x4 Smart Parser - MTD26</title>
+    <title>Cetak Foto 3x4 Ultimate - MTD26</title>
     <style>
         :root {
+            /* KONFIGURASI UKURAN */
             --photo-w: 30mm;
             --photo-h: 40mm;
             --page-margin: 3mm;
@@ -20,54 +21,95 @@
 
         /* --- PANEL KONTROL --- */
         .no-print {
-            background: white; padding: 15px 25px; border-radius: 8px;
+            background: white; padding: 15px 20px; border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             position: sticky; top: 10px; z-index: 999;
-            display: flex; gap: 20px; flex-wrap: wrap; align-items: center; justify-content: center;
+            display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-start; justify-content: center;
             border-bottom: 4px solid #00acc1; margin-bottom: 20px;
+            max-width: 900px;
         }
         
+        .ctrl-column { display: flex; flex-direction: column; gap: 10px; }
+
         .ctrl-section {
             display: flex; flex-direction: column; gap: 5px;
-            border: 1px solid #eee; padding: 10px; border-radius: 6px; background: #f9f9f9;
+            border: 1px solid #eee; padding: 8px 10px; border-radius: 4px; background: #f9f9f9;
         }
-        .ctrl-label { font-size: 11px; font-weight: bold; color: #00acc1; text-transform: uppercase; margin-bottom: 2px; }
+        .ctrl-label { font-size: 11px; font-weight: bold; color: #00acc1; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin-bottom: 3px; }
         
-        input[type=text] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 300px; font-weight: bold; font-family: monospace; }
-        input[type=number] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 60px; text-align: center; font-weight: bold; }
+        .row-inputs { display: flex; gap: 10px; align-items: center; }
+        .row-inputs label { font-size: 12px; color: #555; }
+
+        input[type=number] { padding: 5px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight:bold; width: 50px; }
+        input[type=text] { padding: 5px; border: 1px solid #ccc; border-radius: 4px; width: 200px; font-size: 12px; }
         
         button {
-            padding: 10px 20px; background: #00acc1; color: white; border: none; 
-            border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s;
+            padding: 8px 15px; background: #00acc1; color: white; border: none; 
+            border-radius: 4px; cursor: pointer; font-weight: bold; height: fit-content; align-self: center;
         }
-        button:hover { background: #00838f; transform: translateY(-1px); }
-        .btn-print { background: #1a237e; }
+        button:hover { background: #00838f; }
+        .btn-print { background: #1a237e; font-size: 16px; padding: 10px 20px; }
         
-        #statusMsg { font-size: 12px; font-weight: bold; color: #d35400; margin-top: 5px; text-align: center; }
+        #statusMsg { font-size: 12px; font-weight: bold; color: #d35400; margin-top: 5px; text-align: center;}
 
         /* --- HALAMAN A4 --- */
-        @page { size: A4 portrait; margin: var(--page-margin); }
+        @page {
+            size: A4 portrait;
+            margin: var(--page-margin);
+        }
+
         .sheet {
-            background: white; width: 210mm; height: 297mm; padding: var(--page-margin);
-            box-sizing: border-box; margin-bottom: 20px; display: flex; flex-wrap: wrap;
-            align-content: flex-start; page-break-after: always; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            background: white;
+            width: 210mm; height: 297mm;
+            padding: var(--page-margin);
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            display: flex; flex-wrap: wrap; align-content: flex-start;
+            page-break-after: always;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
+        /* --- SLOT GRID (KOTAK 3x4) --- */
         .slot {
-            width: var(--photo-w); height: var(--photo-h); box-sizing: border-box;
-            position: relative; display: flex; justify-content: center; align-items: center;
-            font-size: 10px; color: #eee; user-select: none;
+            width: var(--photo-w);
+            height: var(--photo-h);
+            box-sizing: border-box;
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 10px; color: #eee;
+            user-select: none;
         }
 
-        .slot.has-photo { box-shadow: 0 0 0 0.5px var(--cut-color); color: transparent; }
+        /* --- FOTO AKTIF --- */
+        .slot.has-photo {
+            /* Garis Potong Pintar (Simulasi border collapse) */
+            box-shadow: 0 0 0 0.5px var(--cut-color);
+            color: transparent;
+        }
 
-        .photo-img { width: calc(100% - 2mm); height: calc(100% - 2mm); object-fit: cover; }
+        .photo-img {
+            /* Area Aman (Padding Putih 1mm) */
+            width: calc(100% - 2mm);
+            height: calc(100% - 2mm);
+            object-fit: cover;
+        }
+
         .name-label {
-            position: absolute; bottom: 2mm; width: 100%; text-align: center; font-size: 7px;
-            color: #000; background: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden;
+            position: absolute; bottom: 2mm; width: 100%;
+            text-align: center; font-size: 7px; color: #000;
+            background: rgba(255,255,255,0.8);
+            white-space: nowrap; overflow: hidden;
         }
-        .data-idx { position: absolute; top: 1px; left: 2px; font-size: 8px; color: #555; background: rgba(255,255,255,0.8); padding: 0 2px; border-radius: 2px; }
+        
+        /* Indikator Nomor Data */
+        .data-idx {
+            position: absolute; top: 1px; left: 2px; 
+            font-size: 8px; color: #555; background: rgba(255,255,255,0.8);
+            padding: 0 2px; border-radius: 2px;
+            /* display: none;  Uncomment jika ingin sembunyi di layar */
+        }
 
+        /* PRINT MODE */
         @media print {
             body { background: none; padding: 0; }
             .no-print { display: none !important; }
@@ -82,27 +124,48 @@
     <div class="no-print">
         <div style="text-align:center;">
             <button onclick="fetchData()">🔄 LOAD DATA</button>
-            <div id="statusMsg">Klik Load Data</div>
+            <div id="statusMsg">...</div>
         </div>
         
-        <div class="ctrl-section">
-            <span class="ctrl-label">Daftar Nomor yang Dicetak</span>
-            <input type="text" id="smartInput" placeholder="Contoh: 1-5, 8, 10-12, 50, 50">
-            <small style="color:#888; font-size:10px;">Gunakan koma (,) dan strip (-) untuk rentang.</small>
+        <div class="ctrl-column">
+            <div class="ctrl-section">
+                <span class="ctrl-label">PILIH DATA (MODE 1: URUT)</span>
+                <div class="row-inputs">
+                    <label>Mulai No:</label>
+                    <input type="number" id="dataStart" value="1" min="1">
+                    <label>Jml:</label>
+                    <input type="number" id="dataCount" value="42">
+                </div>
+            </div>
+
+            <div class="ctrl-section" style="border-color: #f39c12; background:#fffbf0;">
+                <span class="ctrl-label" style="color:#d35400;">ATAU (MODE 2: ACAK)</span>
+                <div class="row-inputs">
+                    <input type="text" id="customList" placeholder="Contoh: 50, 50, 50, 1, 5" oninput="document.getElementById('dataStart').disabled = this.value.length > 0">
+                </div>
+                <small style="color:#888; font-size:10px;">*Jika diisi, Mode 1 tidak berlaku.</small>
+            </div>
         </div>
 
-        <div class="ctrl-section">
-            <span class="ctrl-label">Mulai di Kotak Kertas</span>
-            <input type="number" id="offsetPos" value="1" min="1" max="42">
+        <div class="ctrl-column">
+            <div class="ctrl-section">
+                <span class="ctrl-label">SETTING KERTAS</span>
+                <div class="row-inputs">
+                    <label>Mulai Kotak:</label>
+                    <input type="number" id="offsetPos" value="1" min="1" max="42" title="Gunakan jika kertas sisa">
+                </div>
+            </div>
+            
+            <button onclick="renderPhotos()" style="width:100%">TERAPKAN</button>
         </div>
 
-        <button onclick="renderPhotos()">TERAPKAN</button>
         <button class="btn-print" onclick="window.print()">🖨️ CETAK</button>
     </div>
 
     <div id="outputArea"></div>
 
 <script>
+    // --- KONFIGURASI ---
     const SHEET_ID = '1qckWYXGTqhKMM-WRpzoBwURwXUUrpXo0aBJ_MVi9tQg'; 
     const SHEET_NAME = 'Daftar'; 
     const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
@@ -112,87 +175,82 @@
     function fetchData() {
         const msg = document.getElementById('statusMsg');
         msg.innerText = "⏳..";
-        fetch(DATA_URL).then(res => res.text()).then(text => {
-            const jsonText = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/)[1];
-            const json = JSON.parse(jsonText);
-            parseData(json);
-            msg.innerText = `✅ Terbaca: ${globalData.length} data`;
-            renderPhotos();
-        }).catch(e => { msg.innerText = "❌ Gagal Load"; });
+        
+        fetch(DATA_URL)
+            .then(res => res.text())
+            .then(text => {
+                const jsonText = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/)[1];
+                const json = JSON.parse(jsonText);
+                parseData(json);
+                msg.innerText = `✅ Total: ${globalData.length}`;
+                renderPhotos();
+            })
+            .catch(e => {
+                console.error(e);
+                msg.innerText = "❌ Err";
+            });
     }
 
     function parseData(json) {
         const rows = json.table.rows;
+        // Index Kolom: Nama (2), Link Foto (34 / AI)
         const IDX_NAMA = 2;
         const IDX_FOTO = 34;
+
         globalData = rows.map((r, i) => {
             const c = r.c;
             if(!c) return null;
+            
             let nama = c[IDX_NAMA] ? (c[IDX_NAMA].v || "Tanpa Nama") : "Tanpa Nama";
             let link = "";
             if(c[IDX_FOTO]) link = c[IDX_FOTO].v || "";
+            // Smart Fallback Search
             if(!link || link.length < 5) {
                 for(let k=0; k<c.length; k++) {
-                    let v = c[k] ? String(c[k].v) : "";
-                    if(v.includes("drive.google.com") || v.includes("data:image")) { link = v; break; }
+                    let val = c[k] ? String(c[k].v) : "";
+                    if(val.includes("drive.google.com") || val.includes("data:image")) {
+                        link = val; break;
+                    }
                 }
             }
             return { index: i + 1, nama: nama, foto: link };
         }).filter(d => d);
     }
 
-    // --- SMART PARSER ENGINE ---
-    function parseSmartInput(input) {
-        let queue = [];
-        if(!input) return queue;
-
-        // Pisahkan berdasarkan koma
-        let parts = input.split(',');
-        
-        parts.forEach(part => {
-            part = part.trim();
-            if(part.includes('-')) {
-                // Proses Rentang (1-10)
-                let range = part.split('-');
-                let start = parseInt(range[0]);
-                let end = parseInt(range[1]);
-                if(!isNaN(start) && !isNaN(end)) {
-                    // Pastikan arah loop benar (1-3 atau 3-1)
-                    if(start <= end) {
-                        for(let i = start; i <= end; i++) queue.push(i);
-                    } else {
-                        for(let i = start; i >= end; i--) queue.push(i);
-                    }
-                }
-            } else {
-                // Proses Angka Tunggal
-                let num = parseInt(part);
-                if(!isNaN(num)) queue.push(num);
-            }
-        });
-        return queue;
-    }
-
     function renderPhotos() {
         const container = document.getElementById('outputArea');
         container.innerHTML = "";
+
         if(globalData.length === 0) return;
 
-        // Jalankan Parser
-        const inputVal = document.getElementById('smartInput').value;
-        const indices = parseSmartInput(inputVal);
-        
-        // Ambil Data Berdasarkan Hasil Parser
-        const dataQueue = indices.map(idx => {
-            return globalData[idx - 1] ? globalData[idx - 1] : { index: idx, nama: "Tidak Ada", foto: "" };
-        });
+        // --- LOGIKA PEMILIHAN DATA ---
+        let dataQueue = [];
+        const customInput = document.getElementById('customList').value.trim();
 
-        if(dataQueue.length === 0 && inputVal.length > 0) return;
+        if (customInput.length > 0) {
+            // MODE 2: Custom List (Acak/Duplikat)
+            // Pecah string "50, 50, 1" menjadi array [50, 50, 1]
+            const indices = customInput.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+            
+            // Ambil data berdasarkan nomor urut (dikurangi 1 karena array mulai 0)
+            dataQueue = indices.map(idx => {
+                const realIdx = idx - 1; 
+                return globalData[realIdx] ? globalData[realIdx] : { index: idx, nama: "Data Tidak Ditemukan", foto: "" };
+            });
+            
+        } else {
+            // MODE 1: Berurutan
+            const dataStartIndex = Math.max(0, parseInt(document.getElementById('dataStart').value) - 1);
+            const printCount = parseInt(document.getElementById('dataCount').value);
+            dataQueue = globalData.slice(dataStartIndex, dataStartIndex + printCount);
+        }
 
+        // --- RENDER KE KERTAS ---
         const paperOffset = Math.max(1, parseInt(document.getElementById('offsetPos').value));
         const SLOTS_PER_PAGE = 42; 
-        const totalSlotsNeeded = (paperOffset - 1) + (dataQueue.length || 0);
-        const totalSheets = Math.ceil(totalSlotsNeeded / SLOTS_PER_PAGE) || 1;
+        
+        const totalSlotsNeeded = (paperOffset - 1) + dataQueue.length;
+        const totalSheets = Math.ceil(totalSlotsNeeded / SLOTS_PER_PAGE);
 
         let currentDataIdx = 0;
 
@@ -205,9 +263,12 @@
                 const div = document.createElement('div');
                 div.className = 'slot';
                 
+                // 1. Slot Offset (Kosong Awal)
                 if (globalSlotIndex < paperOffset) {
                     div.innerText = globalSlotIndex; 
-                } else if (currentDataIdx < dataQueue.length) {
+                } 
+                // 2. Data Foto
+                else if (currentDataIdx < dataQueue.length) {
                     const item = dataQueue[currentDataIdx];
                     div.classList.add('has-photo');
                     
@@ -218,12 +279,21 @@
                     }
 
                     if(src && src.length > 10) {
-                        div.innerHTML = `<img src="${src}" class="photo-img" onerror="this.style.display='none'"><div class="name-label">${item.nama.substring(0,12)}</div><div class="data-idx">#${item.index}</div>`;
+                        div.innerHTML = `
+                            <img src="${src}" class="photo-img" onerror="this.style.display='none'; this.parentElement.innerText='ERR'">
+                            <div class="name-label">${item.nama.substring(0,12)}</div>
+                            <div class="data-idx">#${item.index}</div>
+                        `;
                     } else {
-                        div.innerHTML = `<div style="font-size:9px; color:black; text-align:center;">${item.nama.substring(0,10)}<br>(No Foto)</div><div class="data-idx">#${item.index}</div>`;
+                        div.innerHTML = `
+                            <div style="font-size:9px; color:black; text-align:center;">${item.nama.substring(0,10)}<br>(No Foto)</div>
+                            <div class="data-idx">#${item.index}</div>
+                        `;
                     }
                     currentDataIdx++;
-                } else {
+                } 
+                // 3. Slot Sisa
+                else {
                     div.innerText = globalSlotIndex;
                 }
                 sheet.appendChild(div);
@@ -234,5 +304,6 @@
     
     window.onload = fetchData;
 </script>
+
 </body>
 </html>
